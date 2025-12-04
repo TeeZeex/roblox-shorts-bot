@@ -10,7 +10,7 @@ ELEVENLABS_KEY = os.environ.get("ELEVENLABS_API_KEY")
 VOICE_ID = "pNInz6obpgDQGcFmaJgB" 
 
 # Ссылка на твое видео
-VIDEO_URL = "https://drive.google.com/file/d/1EkRfBqxEMp2FFembtMSh68r5DDE2OZXZ/view?usp=sharing"
+VIDEO_URL = "https://drive.google.com/file/d/1EB2FFQks8TWLZ85Ss7vyckpXIJescen9/view?usp=drive_link"
 VIDEO_FILENAME = "background_gameplay.mp4"
 
 def download_video_from_drive():
