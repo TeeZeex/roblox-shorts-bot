@@ -9,8 +9,8 @@ from moviepy.editor import VideoFileClip, AudioFileClip
 ELEVENLABS_KEY = os.environ.get("ELEVENLABS_API_KEY")
 VOICE_ID = "pNInz6obpgDQGcFmaJgB" 
 
-# 👇 ВСТАВЬ СЮДА ССЫЛКУ НА ФАЙЛ С ГУГЛ ДИСКА (не на папку!)
-VIDEO_URL = "https://drive.google.com/file/d/1EB2FFQks8TWLZ85Ss7vyckpXIJescen9/view?usp=drive_link" 
+# Ссылка на твое видео
+VIDEO_URL = "https://drive.google.com/file/d/1EkRfBqxEMp2FFembtMSh68r5DDE2OZXZ/view?usp=sharing"
 VIDEO_FILENAME = "background_gameplay.mp4"
 
 def download_video_from_drive():
@@ -19,16 +19,19 @@ def download_video_from_drive():
         print("✅ Видео уже есть на сервере.")
         return
 
-    print("📥 Скачиваю видео с Google Drive (это может занять время)...")
+    print("📥 Скачиваю видео с Google Drive (5 ГБ, жди 5-10 мин)...")
     try:
-        # gdown сам разберется с форматом ссылки и скачает файл
-        gdown.download(VIDEO_URL, VIDEO_FILENAME, quiet=False, fuzzy=True)
-        print("✅ Видео успешно скачано!")
+        # Используем gdown для скачивания
+        output = gdown.download(VIDEO_URL, VIDEO_FILENAME, quiet=False, fuzzy=True)
+        if output:
+            print("✅ Видео успешно скачано!")
+        else:
+            print("⚠️ gdown ничего не вернул, проверяем файл...")
     except Exception as e:
         print(f"❌ Ошибка скачивания: {e}")
 
 def run_bot():
-    print("--- ЗАПУСК МОНТАЖЕРА v4.0 (GOOGLE DRIVE) ---")
+    print("--- ЗАПУСК МОНТАЖЕРА v4.1 (CATBOX UPLOAD) ---")
     
     if not ELEVENLABS_KEY:
         print("ОШИБКА: Нет ключа ElevenLabs")
@@ -38,7 +41,7 @@ def run_bot():
     download_video_from_drive()
 
     if not os.path.exists(VIDEO_FILENAME):
-        print("❌ Не удалось найти видео-файл. Проверь ссылку.")
+        print("❌ Не удалось найти видео-файл. Проверь ссылку и права доступа.")
         return
 
     # 2. Генерируем голос
@@ -46,8 +49,7 @@ def run_bot():
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
     headers = {"xi-api-key": ELEVENLABS_KEY, "Content-Type": "application/json"}
     
-    # Текст истории
-    story_text = "Представь, ты находишь секретную комнату в Роблоксе, о которой никто не знал. Я зашел туда и увидел такое, что пришлось удалить игру."
+    story_text = "Вчера я нашел баг в Роблоксе, который позволяет проходить сквозь стены. Разработчики уже ищут меня, но я успел записать это видео."
     
     data = {
         "text": story_text,
@@ -66,7 +68,7 @@ def run_bot():
         print("✅ Аудио готово.")
 
         # 3. Монтаж
-        print("🎬 Начинаю монтаж...")
+        print("🎬 Начинаю монтаж (это займет время)...")
         audio = AudioFileClip("temp_audio.mp3")
         video = VideoFileClip(VIDEO_FILENAME)
         
@@ -80,30 +82,42 @@ def run_bot():
         
         print(f"✂️ Беру кусок: {start_time:.1f}с - {start_time + audio.duration:.1f}с")
         
-        # Обрезка по времени
+        # Обрезка и Кроп
         final_clip = video.subclip(start_time, start_time + audio.duration)
         
-        # Кроп под 9:16 (Shorts)
         w, h = final_clip.size
         target_ratio = 9 / 16
         new_w = h * target_ratio
+        
+        # Кроп по центру + Ресайз
         final_clip = final_clip.crop(x1=w/2 - new_w/2, width=new_w, height=h)
         final_clip = final_clip.resize(height=1920)
         
-        # Звук
         final_clip = final_clip.set_audio(audio)
         
         output_filename = "final_shorts.mp4"
-        final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24)
+        # preset='ultrafast' ускорит рендер, чтобы ты быстрее получил результат
+        final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24, preset='ultrafast')
         
-        print("\n🎉 ВИДЕО ГОТОВО! Загружаю ссылку...")
+        print("\n🎉 ВИДЕО ГОТОВО! Загружаю на Catbox...")
 
-        # 4. Выгрузка
+        # 4. ВЫГРУЗКА НА CATBOX.MOE (Надежный вариант)
         with open(output_filename, 'rb') as f:
-            upload = requests.put(f"https://transfer.sh/{output_filename}", data=f)
-            print("\n" + "="*40)
-            print(f"👉 СКАЧАТЬ ГОТОВОЕ ВИДЕО: {upload.text.strip()}")
-            print("="*40 + "\n")
+            try:
+                upload_response = requests.post(
+                    "https://catbox.moe/user/api.php", 
+                    data={"reqtype": "fileupload"}, 
+                    files={"fileToUpload": f}
+                )
+                
+                if upload_response.status_code == 200:
+                    print("\n" + "="*40)
+                    print(f"👉 ТВОЕ ВИДЕО ТУТ: {upload_response.text}")
+                    print("="*40 + "\n")
+                else:
+                    print(f"Ошибка Catbox: {upload_response.text}")
+            except Exception as nav_err:
+                print(f"Ошибка сети при загрузке: {nav_err}")
 
     except Exception as e:
         print(f"КРИТИЧЕСКАЯ ОШИБКА: {e}")
