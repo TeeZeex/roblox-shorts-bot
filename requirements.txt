@@ -2,3 +2,4 @@ openai
 requests
 moviepy==1.0.3
 gdown
+Pillow==9.5.0
