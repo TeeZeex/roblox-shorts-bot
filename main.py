@@ -1,62 +1,53 @@
 import os
-import requests  # Используем обычные запросы, это надежнее
+import requests
+import time
 
-# 1. Настройки
+# Настройки
 ELEVENLABS_KEY = os.environ.get("ELEVENLABS_API_KEY")
-OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
-
-# ID голоса "Adam" (стандартный мужской голос)
-VOICE_ID = "pNInz6obpgDQGcFmaJgB" 
-
-# Тестовая история
-STORY_TEXT = "Привет! Если ты слышишь этот голос, значит мы победили ошибку и сервер работает правильно."
+VOICE_ID = "pNInz6obpgDQGcFmaJgB"  # Голос Adam
 
 def run_bot():
-    print("--- ЗАПУСК БОТА (ВЕРСИЯ 2.0) ---")
+    print("--- ЗАПУСК БОТА v2.1 ---")
     
+    # 1. Проверка ключа
     if not ELEVENLABS_KEY:
-        print("ОШИБКА: Не найден ключ ElevenLabs!")
+        print("ОШИБКА: Ключ ElevenLabs не найден в переменных!")
+        # Держим сервер живым, чтобы видеть логи
+        time.sleep(60) 
         return
 
-    print("1. Ключи на месте. Отправляем запрос в ElevenLabs...")
+    print("1. Ключ найден. Пробуем озвучить текст...")
 
-    # Прямой запрос к API (без использования глючной библиотеки)
+    # 2. Подготовка запроса
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
-    
     headers = {
-        "Accept": "audio/mpeg",
-        "Content-Type": "application/json",
-        "xi-api-key": ELEVENLABS_KEY
+        "xi-api-key": ELEVENLABS_KEY,
+        "Content-Type": "application/json"
     }
-    
     data = {
-        "text": STORY_TEXT,
+        "text": "Привет! Если ты слышишь это, значит новый код наконец-то заработал!",
         "model_id": "eleven_multilingual_v2",
-        "voice_settings": {
-            "stability": 0.5,
-            "similarity_boost": 0.5
-        }
+        "voice_settings": {"stability": 0.5, "similarity_boost": 0.5}
     }
 
+    # 3. Отправка
     try:
         response = requests.post(url, json=data, headers=headers)
         
         if response.status_code == 200:
-            # Сохраняем файл
-            save_path = "test_audio.mp3"
-            with open(save_path, "wb") as f:
+            print("2. УСПЕХ! Ответ от сервера получен.")
+            with open("test_audio.mp3", "wb") as f:
                 f.write(response.content)
-            print(f"2. УСПЕХ! Аудио сохранено в {save_path}")
-            print("Размер файла:", len(response.content), "байт")
+            print("3. Файл test_audio.mp3 успешно сохранен!")
         else:
             print(f"ОШИБКА API: {response.status_code}")
             print(response.text)
-
+            
     except Exception as e:
         print(f"КРИТИЧЕСКАЯ ОШИБКА: {e}")
-
-if __name__ == "__main__":
-    run_bot()
+        
+    print("Бот завершил работу. Жду 10 минут...")
+    time.sleep(600) # Чтобы контейнер не перезапускался постоянно
 
 if __name__ == "__main__":
     run_bot()
