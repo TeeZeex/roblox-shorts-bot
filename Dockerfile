@@ -1,20 +1,23 @@
 FROM python:3.9-slim
 
-# Устанавливаем системные библиотеки для работы с видео
+# ЭТА СТРОКА ВАЖНА: Она заставляет Python писать логи мгновенно
+ENV PYTHONUNBUFFERED=1
+
+# Устанавливаем системные библиотеки (FFmpeg)
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libsm6 \
     libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Создаем папку проекта
+# Папка проекта
 WORKDIR /app
 
 # Копируем файлы
 COPY . .
 
-# Устанавливаем Python-библиотеки
+# Устанавливаем библиотеки
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Команда запуска (пока что запустим и будем ждать, чтобы контейнер не падал)
+# Запуск
 CMD ["python", "main.py"]
