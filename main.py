@@ -67,7 +67,7 @@ def generate_gpt_story():
 
 def make_video():
     """Основная логика создания видео"""
-    print(f"\n--- НАЧАЛО ЦИКЛА v5.5 (0x0.st UPLOAD) ---")
+    print(f"\n--- НАЧАЛО ЦИКЛА v5.6 (0x0.st + FAKE USER AGENT) ---")
     
     if not ELEVENLABS_KEY:
         print("ОШИБКА: Нет ключа ElevenLabs")
@@ -132,13 +132,19 @@ def make_video():
     
     print("\n🎉 ВИДЕО ГОТОВО! Загружаю на 0x0.st...")
 
-    # 5. Выгрузка (0x0.st) - самый надежный вариант для ботов
+    # 5. Выгрузка (0x0.st) с подменой User-Agent
     with open(output_filename, 'rb') as f:
         try:
+            # Притворяемся браузером
+            custom_headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+            
             upload_response = requests.post(
                 "https://0x0.st", 
                 files={"file": f},
-                verify=False # Игнорируем ошибки SSL
+                headers=custom_headers, # <--- ВАЖНОЕ ИЗМЕНЕНИЕ
+                verify=False
             )
             
             if upload_response.status_code == 200:
