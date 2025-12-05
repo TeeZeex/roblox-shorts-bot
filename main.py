@@ -35,39 +35,46 @@ def download_video_from_drive():
         print(f"❌ Ошибка скачивания: {e}")
 
 def generate_gpt_story():
-    print("🧠 ChatGPT придумывает историю...")
+    print("🧠 ChatGPT пишет длинную историю (5 глав) на АНГЛИЙСКОМ...")
     
     if not OPENAI_KEY:
         print("⚠️ Нет ключа ChatGPT. Использую запасной текст.")
-        return "Вчера я зашел на пустой сервер и увидел Бэкон Хейра, который стоял спиной ко мне. Когда он повернулся, у него не было лица."
+        return "Chapter 1. The Beginning. Yesterday I joined an empty server..."
 
     client = OpenAI(api_key=OPENAI_KEY)
     
+    # ОБНОВЛЕННЫЙ ПРОМПТ (ТЕПЕРЬ НА АНГЛИЙСКОМ)
     prompt = (
-        "Напиши очень короткую, пугающую историю (крипипасту) для TikTok "
-        "про Роблокс. Главный герой — Bacon Hair (Бэкон Хейр). "
-        "Максимум 3-4 предложения. Сделай неожиданную концовку. "
-        "Не используй хештеги и смайлики."
+        "Write a captivating and scary story (creepypasta) about Roblox "
+        "with the main character being a Bacon Hair. "
+        "The story should feel like a scary fairy tale. "
+        "MANDATORY REQUIREMENT: The story must consist of exactly 5 chapters. "
+        "Format it as 'Chapter 1: ...', 'Chapter 2: ...' and so on. "
+        "The story must be long, sufficient for a 3-5 minute reading time. "
+        "Make the plot exciting with an unexpected ending in the 5th chapter. "
+        "Do not use hashtags or emojis. Only plain text. "
+        "Write the story entirely in English."
     )
 
     try:
         completion = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo-16k", # Используем модель с большим контекстом
             messages=[
-                {"role": "system", "content": "Ты сценарист вирусных видео."},
+                {"role": "system", "content": "You are a professional horror story writer for YouTube."},
                 {"role": "user", "content": prompt}
-            ]
+            ],
+            max_tokens=2000 
         )
         story = completion.choices[0].message.content
-        print(f"📝 История: {story}")
+        print(f"📝 История готова (Первые 100 символов): {story[:100]}...")
         return story
     except Exception as e:
         print(f"❌ Ошибка OpenAI: {e}")
-        return "Ошибка генерации истории. Бэкон Хейр следит за тобой."
+        return "Error generating story. The Bacon Hair stole the script."
 
 def make_video():
     """Основная логика создания видео"""
-    print(f"\n--- НАЧАЛО ЦИКЛА v5.7 (tmpfiles.org UPLOAD) ---")
+    print(f"\n--- НАЧАЛО ЦИКЛА v6.1 (ENGLISH LONG STORY) ---")
     
     if not ELEVENLABS_KEY:
         print("ОШИБКА: Нет ключа ElevenLabs")
@@ -83,7 +90,7 @@ def make_video():
     story_text = generate_gpt_story()
 
     # 3. Озвучка
-    print("🎤 Озвучиваю...")
+    print("🎤 Озвучиваю большой текст (это займет время)...")
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
     headers = {"xi-api-key": ELEVENLABS_KEY, "Content-Type": "application/json"}
     data = {
@@ -92,49 +99,61 @@ def make_video():
         "voice_settings": {"stability": 0.5, "similarity_boost": 0.5}
     }
 
-    response = requests.post(url, json=data, headers=headers)
-    if response.status_code != 200:
-        print(f"Ошибка озвучки: {response.text}")
+    try:
+        response = requests.post(url, json=data, headers=headers)
+        if response.status_code != 200:
+            print(f"Ошибка озвучки: {response.text}")
+            return
+            
+        with open("temp_audio.mp3", "wb") as f:
+            f.write(response.content)
+        print("✅ Аудио записано.")
+    except Exception as e:
+        print(f"Ошибка при запросе к ElevenLabs: {e}")
         return
-        
-    with open("temp_audio.mp3", "wb") as f:
-        f.write(response.content)
-    print("✅ Аудио записано.")
 
     # Ускорение
     print("⚡ Ускоряю голос...")
     os.system('ffmpeg -y -i temp_audio.mp3 -filter:a "atempo=1.20" temp_audio_fast.mp3')
 
     # 4. Монтаж
-    print("🎬 Монтирую...")
-    audio = AudioFileClip("temp_audio_fast.mp3") 
-    video = VideoFileClip(VIDEO_FILENAME)
-    
-    if video.duration < audio.duration:
-        print("Ошибка: Видео короче аудио!")
-        return
+    print("🎬 Монтирую (рендеринг длинного видео)...")
+    try:
+        audio = AudioFileClip("temp_audio_fast.mp3") 
+        video = VideoFileClip(VIDEO_FILENAME)
+        
+        # Проверка: Хватит ли длины фона?
+        if video.duration < audio.duration:
+            print(f"⚠️ ВНИМАНИЕ: Видео (фон) короче аудио! Аудио: {audio.duration}с, Фон: {video.duration}с")
+            print("🔄 Зацикливаю видео, чтобы хватило на всю историю...")
+            # Вычисляем сколько раз нужно повторить видео
+            loops = int(audio.duration / video.duration) + 1
+            video = video.loop(n=loops) 
 
-    max_start = video.duration - audio.duration
-    start_time = random.uniform(0, max_start)
-    
-    final_clip = video.subclip(start_time, start_time + audio.duration)
-    
-    # 9:16 Crop
-    w, h = final_clip.size
-    new_w = h * (9/16)
-    final_clip = final_clip.crop(x1=w/2 - new_w/2, width=new_w, height=h)
-    final_clip = final_clip.resize(height=1920)
-    
-    final_clip = final_clip.set_audio(audio)
-    output_filename = "final_shorts.mp4"
-    
-    final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24, preset='ultrafast')
-    
-    print("\n🎉 ВИДЕО ГОТОВО! Загружаю на tmpfiles.org...")
+        # Выбираем случайный старт
+        if video.duration > audio.duration + 60:
+            max_start = video.duration - audio.duration
+            start_time = random.uniform(0, max_start)
+            final_clip = video.subclip(start_time, start_time + audio.duration)
+        else:
+            final_clip = video.subclip(0, audio.duration)
+        
+        # 9:16 Crop
+        w, h = final_clip.size
+        new_w = h * (9/16)
+        final_clip = final_clip.crop(x1=w/2 - new_w/2, width=new_w, height=h)
+        final_clip = final_clip.resize(height=1920)
+        
+        final_clip = final_clip.set_audio(audio)
+        output_filename = "final_long_story.mp4"
+        
+        # preset='ultrafast' критичен для длинных видео, иначе будет рендерить час
+        final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24, preset='ultrafast')
+        
+        print("\n🎉 ВИДЕО ГОТОВО! Загружаю на tmpfiles.org...")
 
-    # 5. Выгрузка (tmpfiles.org)
-    with open(output_filename, 'rb') as f:
-        try:
+        # 5. Выгрузка (tmpfiles.org)
+        with open(output_filename, 'rb') as f:
             upload_response = requests.post(
                 "https://tmpfiles.org/api/v1/upload", 
                 files={"file": f}
@@ -143,28 +162,28 @@ def make_video():
             if upload_response.status_code == 200:
                 json_resp = upload_response.json()
                 original_url = json_resp['data']['url']
-                # Делаем прямую ссылку (добавляем /dl/)
                 download_link = original_url.replace("tmpfiles.org/", "tmpfiles.org/dl/")
                 
                 print("\n" + "="*40)
-                print(f"👉 ТВОЕ ВИДЕО ТУТ: {download_link}")
+                print(f"👉 ТВОЕ ДЛИННОЕ ВИДЕО ТУТ: {download_link}")
                 print("="*40 + "\n")
             else:
                 print(f"Ошибка выгрузки: {upload_response.text}")
-        except Exception as e:
-            print(f"Ошибка сети: {e}")
+
+    except Exception as e:
+        print(f"Ошибка монтажа: {e}")
 
 def run_bot_loop():
-    """Вечный цикл, чтобы бот не выключался и не удалял видео"""
+    """Вечный цикл"""
     while True:
         try:
             make_video()
         except Exception as e:
             print(f"\n❌ ПРОИЗОШЛА ОШИБКА: {e}")
-            print("Не выключаюсь, видео на месте. Попробую снова через час.")
+            print("Не выключаюсь. Попробую снова через час.")
         
-        print("✅ Работа завершена. Сплю 1 час перед следующим видео...")
-        time.sleep(3600) # Ждем 1 час
+        print("✅ Работа завершена. Сплю 1 час...")
+        time.sleep(3600)
 
 if __name__ == "__main__":
     run_bot_loop()
