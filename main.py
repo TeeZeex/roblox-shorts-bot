@@ -4,12 +4,14 @@ import random
 import time
 import gdown
 from moviepy.editor import VideoFileClip, AudioFileClip
+from openai import OpenAI  # Библиотека для ChatGPT
 
 # --- НАСТРОЙКИ ---
 ELEVENLABS_KEY = os.environ.get("ELEVENLABS_API_KEY")
+OPENAI_KEY = os.environ.get("OPENAI_API_KEY") # Ключ ChatGPT
 VOICE_ID = "pNInz6obpgDQGcFmaJgB" 
 
-# Ссылка на твое видео (твоя ссылка сохранена)
+# Ссылка на твое видео (геймплей Roblox)
 VIDEO_URL = "https://drive.google.com/file/d/1EB2FFQks8TWLZ85Ss7vyckpXIJescen9/view?usp=drive_link"
 VIDEO_FILENAME = "background_gameplay.mp4"
 
@@ -19,9 +21,9 @@ def download_video_from_drive():
         print("✅ Видео уже есть на сервере.")
         return
 
-    print("📥 Скачиваю видео с Google Drive (5 ГБ, жди 5-10 мин)...")
+    print("📥 Скачиваю видео с Google Drive (5 ГБ)...")
     try:
-        # Используем gdown для скачивания
+        # fuzzy=True помогает найти файл, даже если ссылка немного отличается
         output = gdown.download(VIDEO_URL, VIDEO_FILENAME, quiet=False, fuzzy=True)
         if output:
             print("✅ Видео успешно скачано!")
@@ -30,8 +32,42 @@ def download_video_from_drive():
     except Exception as e:
         print(f"❌ Ошибка скачивания: {e}")
 
+def generate_gpt_story():
+    """Генерирует историю через ChatGPT"""
+    print("🧠 ChatGPT придумывает историю про Bacon Hair...")
+    
+    if not OPENAI_KEY:
+        print("⚠️ Нет ключа OPENAI_API_KEY. Использую запасной текст.")
+        return "Вчера я зашел на пустой сервер и увидел Бэкон Хейра, который стоял спиной ко мне. Когда он повернулся, у него не было лица."
+
+    client = OpenAI(api_key=OPENAI_KEY)
+    
+    # Промпт (Задание для ИИ)
+    prompt = (
+        "Напиши очень короткую, увлекательную и пугающую историю (крипипасту) для TikTok "
+        "про Роблокс. Главный герой — Bacon Hair (Бэкон Хейр). "
+        "История должна быть от первого лица. "
+        "Максимум 3-4 предложения. Сделай неожиданную концовку. "
+        "Не используй хештеги и смайлики. Только текст истории."
+    )
+
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-3.5-turbo", # Можно поменять на gpt-4o, если тариф позволяет
+            messages=[
+                {"role": "system", "content": "Ты сценарист вирусных видео для YouTube Shorts."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        story = completion.choices[0].message.content
+        print(f"📝 История от GPT: {story}")
+        return story
+    except Exception as e:
+        print(f"❌ Ошибка OpenAI: {e}")
+        return "Ошибка генерации истории. Бэкон Хейр следит за тобой."
+
 def run_bot():
-    print("--- ЗАПУСК МОНТАЖЕРА v4.3 (SPEED UP 1.2x) ---")
+    print("--- ЗАПУСК БОТА v5.1 (GPT + BACON HAIR + SPEED 1.2x) ---")
     
     if not ELEVENLABS_KEY:
         print("ОШИБКА: Нет ключа ElevenLabs")
@@ -41,15 +77,16 @@ def run_bot():
     download_video_from_drive()
 
     if not os.path.exists(VIDEO_FILENAME):
-        print("❌ Не удалось найти видео-файл. Проверь ссылку и права доступа.")
+        print("❌ Не удалось найти видео-файл.")
         return
 
-    # 2. Генерируем голос
-    print("🎤 Генерирую голос...")
+    # 2. ГЕНЕРАЦИЯ ТЕКСТА (ChatGPT)
+    story_text = generate_gpt_story()
+
+    # 3. ОЗВУЧКА (ElevenLabs)
+    print("🎤 Озвучиваю текст...")
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
     headers = {"xi-api-key": ELEVENLABS_KEY, "Content-Type": "application/json"}
-    
-    story_text = "In the vast world of Roblox, a foggy night settled over everything. On the empty streets of Bloxburg, only the echo of footsteps could be heard. These footsteps belonged to an ordinary-looking player—a skinny boy with messy orange hair. Everyone knew him as Bacon Hair."
     
     data = {
         "text": story_text,
@@ -65,18 +102,18 @@ def run_bot():
             
         with open("temp_audio.mp3", "wb") as f:
             f.write(response.content)
-        print("✅ Аудио готово.")
+        print("✅ Аудио записано.")
 
-        # --- НОВЫЙ БЛОК: УСКОРЕНИЕ ---
-        # atempo=1.20 означает ускорение на 20% без изменения тональности
+        # --- УСКОРЕНИЕ ГОЛОСА НА 20% ---
         print("⚡ Ускоряю озвучку на 20%...")
+        # Используем FFmpeg для ускорения (atempo=1.20)
         os.system('ffmpeg -y -i temp_audio.mp3 -filter:a "atempo=1.20" temp_audio_fast.mp3')
-        # -----------------------------
+        # -------------------------------
 
-        # 3. Монтаж
-        print("🎬 Начинаю монтаж (это займет время)...")
+        # 4. МОНТАЖ
+        print("🎬 Начинаю монтаж...")
         
-        # ВАЖНО: Тут мы теперь берем файл temp_audio_fast.mp3 (ускоренный)
+        # Используем УСКОРЕННЫЙ файл
         audio = AudioFileClip("temp_audio_fast.mp3") 
         video = VideoFileClip(VIDEO_FILENAME)
         
@@ -84,32 +121,30 @@ def run_bot():
             print("Ошибка: Видео короче, чем аудио!")
             return
 
-        # Случайный старт
+        # Выбираем случайный момент старта
         max_start = video.duration - audio.duration
         start_time = random.uniform(0, max_start)
         
-        print(f"✂️ Беру кусок: {start_time:.1f}с - {start_time + audio.duration:.1f}с")
+        print(f"✂️ Беру кусок: {start_time:.1f}с")
         
-        # Обрезка и Кроп
+        # Обрезка видео по длине аудио
         final_clip = video.subclip(start_time, start_time + audio.duration)
         
+        # Делаем вертикальным (9:16) - Crop по центру
         w, h = final_clip.size
-        target_ratio = 9 / 16
-        new_w = h * target_ratio
-        
-        # Кроп по центру + Ресайз
+        new_w = h * (9/16) # Рассчитываем ширину для вертикального видео
         final_clip = final_clip.crop(x1=w/2 - new_w/2, width=new_w, height=h)
-        final_clip = final_clip.resize(height=1920)
+        final_clip = final_clip.resize(height=1920) # Высокое качество
         
         final_clip = final_clip.set_audio(audio)
         
         output_filename = "final_shorts.mp4"
-        # preset='ultrafast' для скорости
+        # preset='ultrafast' делает рендер быстрее
         final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24, preset='ultrafast')
         
         print("\n🎉 ВИДЕО ГОТОВО! Загружаю на Catbox...")
 
-        # 4. ВЫГРУЗКА НА CATBOX
+        # 5. ВЫГРУЗКА (Catbox)
         with open(output_filename, 'rb') as f:
             try:
                 upload_response = requests.post(
