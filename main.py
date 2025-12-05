@@ -67,7 +67,7 @@ def generate_gpt_story():
 
 def make_video():
     """Основная логика создания видео"""
-    print(f"\n--- НАЧАЛО ЦИКЛА v5.6 (0x0.st + FAKE USER AGENT) ---")
+    print(f"\n--- НАЧАЛО ЦИКЛА v5.7 (tmpfiles.org UPLOAD) ---")
     
     if not ELEVENLABS_KEY:
         print("ОШИБКА: Нет ключа ElevenLabs")
@@ -130,27 +130,24 @@ def make_video():
     
     final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24, preset='ultrafast')
     
-    print("\n🎉 ВИДЕО ГОТОВО! Загружаю на 0x0.st...")
+    print("\n🎉 ВИДЕО ГОТОВО! Загружаю на tmpfiles.org...")
 
-    # 5. Выгрузка (0x0.st) с подменой User-Agent
+    # 5. Выгрузка (tmpfiles.org)
     with open(output_filename, 'rb') as f:
         try:
-            # Притворяемся браузером
-            custom_headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-            }
-            
             upload_response = requests.post(
-                "https://0x0.st", 
-                files={"file": f},
-                headers=custom_headers, # <--- ВАЖНОЕ ИЗМЕНЕНИЕ
-                verify=False
+                "https://tmpfiles.org/api/v1/upload", 
+                files={"file": f}
             )
             
             if upload_response.status_code == 200:
-                link = upload_response.text.strip()
+                json_resp = upload_response.json()
+                original_url = json_resp['data']['url']
+                # Делаем прямую ссылку (добавляем /dl/)
+                download_link = original_url.replace("tmpfiles.org/", "tmpfiles.org/dl/")
+                
                 print("\n" + "="*40)
-                print(f"👉 ТВОЕ ВИДЕО ТУТ: {link}")
+                print(f"👉 ТВОЕ ВИДЕО ТУТ: {download_link}")
                 print("="*40 + "\n")
             else:
                 print(f"Ошибка выгрузки: {upload_response.text}")
