@@ -15,8 +15,11 @@ ELEVENLABS_KEY = os.environ.get("ELEVENLABS_API_KEY")
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
 VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
-# Ссылка на видео (Google Drive)
-VIDEO_URL = "https://drive.google.com/file/d/1EB2FFQks8TWLZ85Ss7vyckpXIJescen9/view?usp=sharing"
+# Ссылка на твое видео (Google Drive) - может быть заблокирована квотой
+PRIMARY_VIDEO_URL = "https://drive.google.com/file/d/1EB2FFQks8TWLZ85Ss7vyckpXIJescen9/view?usp=drive_link"
+# Запасная ссылка (Parkour Gameplay), если Google заблокирует основную
+BACKUP_VIDEO_URL = "https://videos.pexels.com/video-files/5196323/5196323-hd_1920_1080_25fps.mp4"
+
 VIDEO_FILENAME = "background_gameplay.mp4"
 
 def download_video_from_drive():
@@ -24,15 +27,30 @@ def download_video_from_drive():
         print("✅ Видео уже есть на сервере. Скачивание не требуется.")
         return
 
-    print("📥 Скачиваю видео с Google Drive (5 ГБ)...")
+    print("📥 Попытка 1: Скачиваю основное видео с Google Drive...")
     try:
-        output = gdown.download(VIDEO_URL, VIDEO_FILENAME, quiet=False, fuzzy=True)
-        if output:
-            print("✅ Видео успешно скачано!")
-        else:
-            print("⚠️ gdown ничего не вернул, проверяем файл...")
+        # Пытаемся скачать оригинал
+        output = gdown.download(PRIMARY_VIDEO_URL, VIDEO_FILENAME, quiet=False, fuzzy=True)
+        
+        if output and os.path.exists(VIDEO_FILENAME):
+            print("✅ Основное видео успешно скачано!")
+            return
     except Exception as e:
-        print(f"❌ Ошибка скачивания: {e}")
+        print(f"⚠️ Ошибка Google Drive: {e}")
+    
+    # Если мы здесь, значит основное видео не скачалось (квота или ошибка)
+    print("\n⚠️ Google Drive заблокировал файл (квота превышена).")
+    print("📥 Попытка 2: Скачиваю ЗАПАСНОЕ видео (Parkour Gameplay)...")
+    
+    try:
+        response = requests.get(BACKUP_VIDEO_URL, stream=True, verify=False)
+        with open(VIDEO_FILENAME, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1024*1024):
+                if chunk:
+                    f.write(chunk)
+        print("✅ Запасное видео успешно скачано!")
+    except Exception as e:
+        print(f"❌ Критическая ошибка скачивания: {e}")
 
 def generate_gpt_story():
     print("🧠 ChatGPT пишет длинную историю (5 глав) на АНГЛИЙСКОМ...")
@@ -74,16 +92,16 @@ def generate_gpt_story():
 
 def make_video():
     """Основная логика создания видео"""
-    print(f"\n--- НАЧАЛО ЦИКЛА v6.1 (ENGLISH LONG STORY) ---")
+    print(f"\n--- НАЧАЛО ЦИКЛА v6.2 (SMART DOWNLOADER) ---")
     
     if not ELEVENLABS_KEY:
         print("ОШИБКА: Нет ключа ElevenLabs")
         return
 
-    # 1. Скачиваем (Если файл уже есть, функция просто выйдет)
+    # 1. Скачиваем (Сначала пробуем Drive, потом запасное)
     download_video_from_drive()
     if not os.path.exists(VIDEO_FILENAME):
-        print("❌ Не удалось найти видео.")
+        print("❌ Не удалось найти видео ни на Drive, ни на резерве.")
         return
 
     # 2. Текст
@@ -126,16 +144,17 @@ def make_video():
         if video.duration < audio.duration:
             print(f"⚠️ ВНИМАНИЕ: Видео (фон) короче аудио! Аудио: {audio.duration}с, Фон: {video.duration}с")
             print("🔄 Зацикливаю видео, чтобы хватило на всю историю...")
-            # Вычисляем сколько раз нужно повторить видео
             loops = int(audio.duration / video.duration) + 1
             video = video.loop(n=loops) 
 
         # Выбираем случайный старт
+        # Если видео намного длиннее аудио (с запасом), выбираем случайный кусок
         if video.duration > audio.duration + 60:
             max_start = video.duration - audio.duration
             start_time = random.uniform(0, max_start)
             final_clip = video.subclip(start_time, start_time + audio.duration)
         else:
+            # Если видео впритык (или после зацикливания), берем с начала
             final_clip = video.subclip(0, audio.duration)
         
         # 9:16 Crop
@@ -147,7 +166,7 @@ def make_video():
         final_clip = final_clip.set_audio(audio)
         output_filename = "final_long_story.mp4"
         
-        # preset='ultrafast' критичен для длинных видео, иначе будет рендерить час
+        # preset='ultrafast' критичен для длинных видео
         final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24, preset='ultrafast')
         
         print("\n🎉 ВИДЕО ГОТОВО! Загружаю на tmpfiles.org...")
