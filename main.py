@@ -67,7 +67,7 @@ def generate_gpt_story():
 
 def make_video():
     """Основная логика создания видео"""
-    print(f"\n--- НАЧАЛО ЦИКЛА v5.4 (NO-SSL + LOOP) ---")
+    print(f"\n--- НАЧАЛО ЦИКЛА v5.5 (0x0.st UPLOAD) ---")
     
     if not ELEVENLABS_KEY:
         print("ОШИБКА: Нет ключа ElevenLabs")
@@ -130,24 +130,26 @@ def make_video():
     
     final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24, preset='ultrafast')
     
-    print("\n🎉 ВИДЕО ГОТОВО! Загружаю на PixelDrain...")
+    print("\n🎉 ВИДЕО ГОТОВО! Загружаю на 0x0.st...")
 
-    # 5. Выгрузка (PixelDrain) с отключенной проверкой SSL
+    # 5. Выгрузка (0x0.st) - самый надежный вариант для ботов
     with open(output_filename, 'rb') as f:
-        upload_response = requests.post(
-            "https://pixeldrain.com/api/file", 
-            files={"file": f},
-            auth=('', ''),
-            verify=False # <--- ИГНОРИРУЕМ ОШИБКИ SSL
-        )
-        if upload_response.status_code == 201:
-            file_id = upload_response.json().get("id")
-            link = f"https://pixeldrain.com/u/{file_id}"
-            print("\n" + "="*40)
-            print(f"👉 ТВОЕ ВИДЕО ТУТ: {link}")
-            print("="*40 + "\n")
-        else:
-            print(f"Ошибка выгрузки: {upload_response.text}")
+        try:
+            upload_response = requests.post(
+                "https://0x0.st", 
+                files={"file": f},
+                verify=False # Игнорируем ошибки SSL
+            )
+            
+            if upload_response.status_code == 200:
+                link = upload_response.text.strip()
+                print("\n" + "="*40)
+                print(f"👉 ТВОЕ ВИДЕО ТУТ: {link}")
+                print("="*40 + "\n")
+            else:
+                print(f"Ошибка выгрузки: {upload_response.text}")
+        except Exception as e:
+            print(f"Ошибка сети: {e}")
 
 def run_bot_loop():
     """Вечный цикл, чтобы бот не выключался и не удалял видео"""
