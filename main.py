@@ -9,7 +9,7 @@ from moviepy.editor import VideoFileClip, AudioFileClip
 ELEVENLABS_KEY = os.environ.get("ELEVENLABS_API_KEY")
 VOICE_ID = "pNInz6obpgDQGcFmaJgB" 
 
-# Ссылка на твое видео
+# Ссылка на твое видео (твоя ссылка сохранена)
 VIDEO_URL = "https://drive.google.com/file/d/1EB2FFQks8TWLZ85Ss7vyckpXIJescen9/view?usp=drive_link"
 VIDEO_FILENAME = "background_gameplay.mp4"
 
@@ -31,7 +31,7 @@ def download_video_from_drive():
         print(f"❌ Ошибка скачивания: {e}")
 
 def run_bot():
-    print("--- ЗАПУСК МОНТАЖЕРА v4.1 (CATBOX UPLOAD) ---")
+    print("--- ЗАПУСК МОНТАЖЕРА v4.3 (SPEED UP 1.2x) ---")
     
     if not ELEVENLABS_KEY:
         print("ОШИБКА: Нет ключа ElevenLabs")
@@ -49,7 +49,7 @@ def run_bot():
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
     headers = {"xi-api-key": ELEVENLABS_KEY, "Content-Type": "application/json"}
     
-    story_text = "Вчера я нашел баг в Роблоксе, который позволяет проходить сквозь стены. Разработчики уже ищут меня, но я успел записать это видео."
+    story_text = "In the vast world of Roblox, a foggy night settled over everything. On the empty streets of Bloxburg, only the echo of footsteps could be heard. These footsteps belonged to an ordinary-looking player—a skinny boy with messy orange hair. Everyone knew him as Bacon Hair."
     
     data = {
         "text": story_text,
@@ -67,9 +67,17 @@ def run_bot():
             f.write(response.content)
         print("✅ Аудио готово.")
 
+        # --- НОВЫЙ БЛОК: УСКОРЕНИЕ ---
+        # atempo=1.20 означает ускорение на 20% без изменения тональности
+        print("⚡ Ускоряю озвучку на 20%...")
+        os.system('ffmpeg -y -i temp_audio.mp3 -filter:a "atempo=1.20" temp_audio_fast.mp3')
+        # -----------------------------
+
         # 3. Монтаж
         print("🎬 Начинаю монтаж (это займет время)...")
-        audio = AudioFileClip("temp_audio.mp3")
+        
+        # ВАЖНО: Тут мы теперь берем файл temp_audio_fast.mp3 (ускоренный)
+        audio = AudioFileClip("temp_audio_fast.mp3") 
         video = VideoFileClip(VIDEO_FILENAME)
         
         if video.duration < audio.duration:
@@ -96,12 +104,12 @@ def run_bot():
         final_clip = final_clip.set_audio(audio)
         
         output_filename = "final_shorts.mp4"
-        # preset='ultrafast' ускорит рендер, чтобы ты быстрее получил результат
+        # preset='ultrafast' для скорости
         final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24, preset='ultrafast')
         
         print("\n🎉 ВИДЕО ГОТОВО! Загружаю на Catbox...")
 
-        # 4. ВЫГРУЗКА НА CATBOX.MOE (Надежный вариант)
+        # 4. ВЫГРУЗКА НА CATBOX
         with open(output_filename, 'rb') as f:
             try:
                 upload_response = requests.post(
