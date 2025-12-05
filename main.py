@@ -3,11 +3,11 @@ import requests
 import random
 import time
 import gdown
-import urllib3 # Для отключения предупреждений SSL
+import urllib3 
 from moviepy.editor import VideoFileClip, AudioFileClip
 from openai import OpenAI
 
-# Отключаем предупреждения о небезопасном соединении (так как мы используем verify=False)
+# Отключаем предупреждения SSL
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- НАСТРОЙКИ ---
@@ -15,42 +15,32 @@ ELEVENLABS_KEY = os.environ.get("ELEVENLABS_API_KEY")
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
 VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
-# Ссылка на твое видео (Google Drive) - может быть заблокирована квотой
-PRIMARY_VIDEO_URL = "https://drive.google.com/file/d/1EB2FFQks8TWLZ85Ss7vyckpXIJescen9/view?usp=drive_link"
-# Запасная ссылка (Parkour Gameplay), если Google заблокирует основную
-BACKUP_VIDEO_URL = "https://videos.pexels.com/video-files/5196323/5196323-hd_1920_1080_25fps.mp4"
+# Ссылки
+PRIMARY_VIDEO_URL = "https://drive.google.com/file/d/12bWc0UH4I0kI0Nu5OR6D_D5Oxdt53F3v/view?usp=drive_link"
 
 VIDEO_FILENAME = "background_gameplay.mp4"
 
 def download_video_from_drive():
+    # 1. Проверка существующего файла
     if os.path.exists(VIDEO_FILENAME):
-        print("✅ Видео уже есть на сервере. Скачивание не требуется.")
-        return
+        file_size_mb = os.path.getsize(VIDEO_FILENAME) / (1024 * 1024)
+        if file_size_mb > 10: # Если файл больше 10 МБ, считаем его нормальным
+            print(f"✅ Видео уже есть на сервере ({file_size_mb:.1f} MB). Скачивание не требуется.")
+            return
+        else:
+            print(f"⚠️ Найден битый или пустой файл ({file_size_mb:.1f} MB). Удаляю...")
+            os.remove(VIDEO_FILENAME)
 
-    print("📥 Попытка 1: Скачиваю основное видео с Google Drive...")
+    # 2. Попытка скачать с Google Drive
+    print("📥 Скачиваю видео с Google Drive...")
     try:
-        # Пытаемся скачать оригинал
         output = gdown.download(PRIMARY_VIDEO_URL, VIDEO_FILENAME, quiet=False, fuzzy=True)
-        
-        if output and os.path.exists(VIDEO_FILENAME):
-            print("✅ Основное видео успешно скачано!")
+        # Проверяем, что скачалось
+        if os.path.exists(VIDEO_FILENAME) and os.path.getsize(VIDEO_FILENAME) > 10 * 1024 * 1024:
+            print("✅ Видео успешно скачано!")
             return
     except Exception as e:
         print(f"⚠️ Ошибка Google Drive: {e}")
-    
-    # Если мы здесь, значит основное видео не скачалось (квота или ошибка)
-    print("\n⚠️ Google Drive заблокировал файл (квота превышена).")
-    print("📥 Попытка 2: Скачиваю ЗАПАСНОЕ видео (Parkour Gameplay)...")
-    
-    try:
-        response = requests.get(BACKUP_VIDEO_URL, stream=True, verify=False)
-        with open(VIDEO_FILENAME, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=1024*1024):
-                if chunk:
-                    f.write(chunk)
-        print("✅ Запасное видео успешно скачано!")
-    except Exception as e:
-        print(f"❌ Критическая ошибка скачивания: {e}")
 
 def generate_gpt_story():
     print("🧠 ChatGPT пишет длинную историю (5 глав) на АНГЛИЙСКОМ...")
@@ -61,14 +51,13 @@ def generate_gpt_story():
 
     client = OpenAI(api_key=OPENAI_KEY)
     
-    # ОБНОВЛЕННЫЙ ПРОМПТ (ТЕПЕРЬ НА АНГЛИЙСКОМ)
     prompt = (
         "Write a captivating and scary story (creepypasta) about Roblox "
         "with the main character being a Bacon Hair. "
         "The story should feel like a scary fairy tale. "
-        "MANDATORY REQUIREMENT: The story must consist of exactly 5 chapters. "
+        "MANDATORY REQUIREMENT: The story must consist of exactly 3 chapters. "
         "Format it as 'Chapter 1: ...', 'Chapter 2: ...' and so on. "
-        "The story must be long, sufficient for a 3-5 minute reading time. "
+        "The story must be long, sufficient for a 2-3 minute reading time. "
         "Make the plot exciting with an unexpected ending in the 5th chapter. "
         "Do not use hashtags or emojis. Only plain text. "
         "Write the story entirely in English."
@@ -76,7 +65,7 @@ def generate_gpt_story():
 
     try:
         completion = client.chat.completions.create(
-            model="gpt-3.5-turbo-16k", # Используем модель с большим контекстом
+            model="gpt-3.5-turbo-16k", 
             messages=[
                 {"role": "system", "content": "You are a professional horror story writer for YouTube."},
                 {"role": "user", "content": prompt}
@@ -92,23 +81,23 @@ def generate_gpt_story():
 
 def make_video():
     """Основная логика создания видео"""
-    print(f"\n--- НАЧАЛО ЦИКЛА v6.2 (SMART DOWNLOADER) ---")
+    print(f"\n--- НАЧАЛО ЦИКЛА v6.4 (NO BACKUP VIDEO) ---")
     
     if not ELEVENLABS_KEY:
         print("ОШИБКА: Нет ключа ElevenLabs")
         return
 
-    # 1. Скачиваем (Сначала пробуем Drive, потом запасное)
+    # 1. Скачиваем
     download_video_from_drive()
     if not os.path.exists(VIDEO_FILENAME):
-        print("❌ Не удалось найти видео ни на Drive, ни на резерве.")
+        print("❌ Не удалось найти видео.")
         return
 
     # 2. Текст
     story_text = generate_gpt_story()
 
     # 3. Озвучка
-    print("🎤 Озвучиваю большой текст (это займет время)...")
+    print("🎤 Озвучиваю большой текст...")
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
     headers = {"xi-api-key": ELEVENLABS_KEY, "Content-Type": "application/json"}
     data = {
@@ -135,26 +124,31 @@ def make_video():
     os.system('ffmpeg -y -i temp_audio.mp3 -filter:a "atempo=1.20" temp_audio_fast.mp3')
 
     # 4. Монтаж
-    print("🎬 Монтирую (рендеринг длинного видео)...")
+    print("🎬 Монтирую...")
     try:
         audio = AudioFileClip("temp_audio_fast.mp3") 
-        video = VideoFileClip(VIDEO_FILENAME)
         
-        # Проверка: Хватит ли длины фона?
+        # БЕЗОПАСНАЯ ЗАГРУЗКА ВИДЕО
+        try:
+            video = VideoFileClip(VIDEO_FILENAME)
+        except Exception as e:
+            print(f"❌ ОШИБКА ВИДЕОФАЙЛА: {e}")
+            print("⚠️ Файл битый! Удаляю его, чтобы в следующий раз скачать нормальный.")
+            os.remove(VIDEO_FILENAME)
+            return # Прерываем этот круг, начнем заново
+
+        # Проверка длины
         if video.duration < audio.duration:
-            print(f"⚠️ ВНИМАНИЕ: Видео (фон) короче аудио! Аудио: {audio.duration}с, Фон: {video.duration}с")
-            print("🔄 Зацикливаю видео, чтобы хватило на всю историю...")
+            print(f"🔄 Зацикливаю видео (Аудио: {audio.duration}с)...")
             loops = int(audio.duration / video.duration) + 1
             video = video.loop(n=loops) 
 
-        # Выбираем случайный старт
-        # Если видео намного длиннее аудио (с запасом), выбираем случайный кусок
+        # Выбираем кусок
         if video.duration > audio.duration + 60:
             max_start = video.duration - audio.duration
             start_time = random.uniform(0, max_start)
             final_clip = video.subclip(start_time, start_time + audio.duration)
         else:
-            # Если видео впритык (или после зацикливания), берем с начала
             final_clip = video.subclip(0, audio.duration)
         
         # 9:16 Crop
@@ -166,23 +160,17 @@ def make_video():
         final_clip = final_clip.set_audio(audio)
         output_filename = "final_long_story.mp4"
         
-        # preset='ultrafast' критичен для длинных видео
         final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24, preset='ultrafast')
         
         print("\n🎉 ВИДЕО ГОТОВО! Загружаю на tmpfiles.org...")
 
-        # 5. Выгрузка (tmpfiles.org)
+        # 5. Выгрузка
         with open(output_filename, 'rb') as f:
-            upload_response = requests.post(
-                "https://tmpfiles.org/api/v1/upload", 
-                files={"file": f}
-            )
-            
+            upload_response = requests.post("https://tmpfiles.org/api/v1/upload", files={"file": f})
             if upload_response.status_code == 200:
                 json_resp = upload_response.json()
                 original_url = json_resp['data']['url']
                 download_link = original_url.replace("tmpfiles.org/", "tmpfiles.org/dl/")
-                
                 print("\n" + "="*40)
                 print(f"👉 ТВОЕ ДЛИННОЕ ВИДЕО ТУТ: {download_link}")
                 print("="*40 + "\n")
@@ -193,15 +181,13 @@ def make_video():
         print(f"Ошибка монтажа: {e}")
 
 def run_bot_loop():
-    """Вечный цикл"""
     while True:
         try:
             make_video()
         except Exception as e:
-            print(f"\n❌ ПРОИЗОШЛА ОШИБКА: {e}")
-            print("Не выключаюсь. Попробую снова через час.")
+            print(f"\n❌ ОБЩАЯ ОШИБКА: {e}")
         
-        print("✅ Работа завершена. Сплю 1 час...")
+        print("✅ Сплю 1 час...")
         time.sleep(3600)
 
 if __name__ == "__main__":
