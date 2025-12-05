@@ -67,7 +67,7 @@ def generate_gpt_story():
         return "Ошибка генерации истории. Бэкон Хейр следит за тобой."
 
 def run_bot():
-    print("--- ЗАПУСК БОТА v5.1 (GPT + BACON HAIR + SPEED 1.2x) ---")
+    print("--- ЗАПУСК БОТА v5.2 (PIXELDRAIN UPLOAD) ---")
     
     if not ELEVENLABS_KEY:
         print("ОШИБКА: Нет ключа ElevenLabs")
@@ -100,73 +100,4 @@ def run_bot():
             print(f"Ошибка озвучки: {response.text}")
             return
             
-        with open("temp_audio.mp3", "wb") as f:
-            f.write(response.content)
-        print("✅ Аудио записано.")
-
-        # --- УСКОРЕНИЕ ГОЛОСА НА 20% ---
-        print("⚡ Ускоряю озвучку на 20%...")
-        # Используем FFmpeg для ускорения (atempo=1.20)
-        os.system('ffmpeg -y -i temp_audio.mp3 -filter:a "atempo=1.20" temp_audio_fast.mp3')
-        # -------------------------------
-
-        # 4. МОНТАЖ
-        print("🎬 Начинаю монтаж...")
-        
-        # Используем УСКОРЕННЫЙ файл
-        audio = AudioFileClip("temp_audio_fast.mp3") 
-        video = VideoFileClip(VIDEO_FILENAME)
-        
-        if video.duration < audio.duration:
-            print("Ошибка: Видео короче, чем аудио!")
-            return
-
-        # Выбираем случайный момент старта
-        max_start = video.duration - audio.duration
-        start_time = random.uniform(0, max_start)
-        
-        print(f"✂️ Беру кусок: {start_time:.1f}с")
-        
-        # Обрезка видео по длине аудио
-        final_clip = video.subclip(start_time, start_time + audio.duration)
-        
-        # Делаем вертикальным (9:16) - Crop по центру
-        w, h = final_clip.size
-        new_w = h * (9/16) # Рассчитываем ширину для вертикального видео
-        final_clip = final_clip.crop(x1=w/2 - new_w/2, width=new_w, height=h)
-        final_clip = final_clip.resize(height=1920) # Высокое качество
-        
-        final_clip = final_clip.set_audio(audio)
-        
-        output_filename = "final_shorts.mp4"
-        # preset='ultrafast' делает рендер быстрее
-        final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24, preset='ultrafast')
-        
-        print("\n🎉 ВИДЕО ГОТОВО! Загружаю на Catbox...")
-
-        # 5. ВЫГРУЗКА (Catbox)
-        with open(output_filename, 'rb') as f:
-            try:
-                upload_response = requests.post(
-                    "https://catbox.moe/user/api.php", 
-                    data={"reqtype": "fileupload"}, 
-                    files={"fileToUpload": f}
-                )
-                
-                if upload_response.status_code == 200:
-                    print("\n" + "="*40)
-                    print(f"👉 ТВОЕ ВИДЕО ТУТ: {upload_response.text}")
-                    print("="*40 + "\n")
-                else:
-                    print(f"Ошибка Catbox: {upload_response.text}")
-            except Exception as nav_err:
-                print(f"Ошибка сети при загрузке: {nav_err}")
-
-    except Exception as e:
-        print(f"КРИТИЧЕСКАЯ ОШИБКА: {e}")
-
-    print("Сплю 1 час...")
-    time.sleep(3600)
-
-if __name__ == "__main__":
-    run_bot()
+        with
