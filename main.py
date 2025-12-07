@@ -138,8 +138,12 @@ def robust_upload(file_path):
     return None
 
 def make_video():
-    print(f"\n--- НАЧАЛО ЦИКЛА v7.1 (PIXELDRAIN PRIORITY) ---")
+    print(f"\n--- НАЧАЛО ЦИКЛА v7.2 (ELEVENLABS ON) ---")
     
+    if not ELEVENLABS_KEY:
+        print("ОШИБКА: Нет ключа ElevenLabs")
+        return
+
     # 1. Скачиваем
     download_video_from_drive()
     if not os.path.exists(VIDEO_FILENAME):
@@ -149,12 +153,29 @@ def make_video():
     # 2. Текст
     story_text = generate_gpt_story()
 
-    # 3. Озвучка (ПОКА ОТКЛЮЧЕНА)
-    print("🎤 Озвучиваю... (ОТКЛЮЧЕНО: ЭКОНОМИЯ ПОИНТОВ)")
-    print("⚠️ Создаю пустой аудиофайл для теста...")
-    os.system('ffmpeg -f lavfi -i anullsrc=r=44100:cl=stereo -t 10 -q:a 9 -acodec libmp3lame temp_audio.mp3 -y')
-    
-    # Ускорение (фиктивное для теста)
+    # 3. Озвучка (ВКЛЮЧЕНА)
+    print("🎤 Озвучиваю текст через ElevenLabs...")
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
+    headers = {"xi-api-key": ELEVENLABS_KEY, "Content-Type": "application/json"}
+    data = {
+        "text": story_text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {"stability": 0.5, "similarity_boost": 0.5}
+    }
+
+    try:
+        response = requests.post(url, json=data, headers=headers)
+        if response.status_code != 200:
+            print(f"Ошибка озвучки: {response.text}")
+            return
+        with open("temp_audio.mp3", "wb") as f:
+            f.write(response.content)
+        print("✅ Аудио записано.")
+    except Exception as e:
+        print(f"Ошибка ElevenLabs: {e}")
+        return
+
+    # Ускорение
     print("⚡ Ускоряю голос...")
     os.system('ffmpeg -y -i temp_audio.mp3 -filter:a "atempo=1.20" temp_audio_fast.mp3')
 
