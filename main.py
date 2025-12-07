@@ -55,9 +55,9 @@ def generate_gpt_story():
         "Write a captivating and scary story (creepypasta) about Roblox "
         "with the main character being a Bacon Hair. "
         "The story should feel like a scary fairy tale. "
-        "MANDATORY REQUIREMENT: The story must consist of exactly 3 chapters. "
+        "MANDATORY REQUIREMENT: The story must consist of exactly 5 chapters. "
         "Format it as 'Chapter 1: ...', 'Chapter 2: ...' and so on. "
-        "The story must be long, sufficient for a 2-3 minute reading time. "
+        "The story must be long, sufficient for a 3-5 minute reading time. "
         "Make the plot exciting with an unexpected ending in the 5th chapter. "
         "Do not use hashtags or emojis. Only plain text. "
         "Write the story entirely in English."
@@ -81,7 +81,7 @@ def generate_gpt_story():
 
 def make_video():
     """Основная логика создания видео"""
-    print(f"\n--- НАЧАЛО ЦИКЛА v6.4 (NO BACKUP VIDEO) ---")
+    print(f"\n--- НАЧАЛО ЦИКЛА v6.5 (PIXELDRAIN LARGE FILE FIX) ---")
     
     if not ELEVENLABS_KEY:
         print("ОШИБКА: Нет ключа ElevenLabs")
@@ -162,17 +162,26 @@ def make_video():
         
         final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24, preset='ultrafast')
         
-        print("\n🎉 ВИДЕО ГОТОВО! Загружаю на tmpfiles.org...")
+        print("\n🎉 ВИДЕО ГОТОВО! Загружаю на PixelDrain (до 5ГБ)...")
 
-        # 5. Выгрузка
+        # 5. Выгрузка (PixelDrain с отключенным SSL и User-Agent)
         with open(output_filename, 'rb') as f:
-            upload_response = requests.post("https://tmpfiles.org/api/v1/upload", files={"file": f})
-            if upload_response.status_code == 200:
-                json_resp = upload_response.json()
-                original_url = json_resp['data']['url']
-                download_link = original_url.replace("tmpfiles.org/", "tmpfiles.org/dl/")
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+            upload_response = requests.post(
+                "https://pixeldrain.com/api/file", 
+                files={"file": f},
+                auth=('', ''),
+                headers=headers,
+                verify=False # Игнорируем ошибки SSL, это критично для Railway
+            )
+            
+            if upload_response.status_code == 201: # 201 = Created
+                file_id = upload_response.json().get("id")
+                link = f"https://pixeldrain.com/u/{file_id}"
                 print("\n" + "="*40)
-                print(f"👉 ТВОЕ ДЛИННОЕ ВИДЕО ТУТ: {download_link}")
+                print(f"👉 ТВОЕ ДЛИННОЕ ВИДЕО ТУТ: {link}")
                 print("="*40 + "\n")
             else:
                 print(f"Ошибка выгрузки: {upload_response.text}")
