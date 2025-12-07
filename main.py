@@ -16,7 +16,7 @@ OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
 VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
 # Ссылки
-PRIMARY_VIDEO_URL = "https://drive.google.com/file/d/12bWc0UH4I0kI0Nu5OR6D_D5Oxdt53F3v/view?usp=drive_link"
+PRIMARY_VIDEO_URL = "https://drive.google.com/file/d/1EB2FFQks8TWLZ85Ss7vyckpXIJescen9/view?usp=drive_link"
 
 VIDEO_FILENAME = "background_gameplay.mp4"
 
