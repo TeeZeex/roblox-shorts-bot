@@ -15,27 +15,25 @@ ELEVENLABS_KEY = os.environ.get("ELEVENLABS_API_KEY")
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
 VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
-# Ссылки
-PRIMARY_VIDEO_URL = "https://drive.google.com/file/d/1EB2FFQks8TWLZ85Ss7vyckpXIJescen9/view?usp=drive_link"
-
+# Ссылка на видео (Google Drive)
+VIDEO_URL = "https://drive.google.com/file/d/1EB2FFQks8TWLZ85Ss7vyckpXIJescen9/view?usp=drive_link"
 VIDEO_FILENAME = "background_gameplay.mp4"
 
 def download_video_from_drive():
     # 1. Проверка существующего файла
     if os.path.exists(VIDEO_FILENAME):
         file_size_mb = os.path.getsize(VIDEO_FILENAME) / (1024 * 1024)
-        if file_size_mb > 10: # Если файл больше 10 МБ, считаем его нормальным
+        if file_size_mb > 10: 
             print(f"✅ Видео уже есть на сервере ({file_size_mb:.1f} MB). Скачивание не требуется.")
             return
         else:
-            print(f"⚠️ Найден битый или пустой файл ({file_size_mb:.1f} MB). Удаляю...")
+            print(f"⚠️ Найден битый файл. Удаляю...")
             os.remove(VIDEO_FILENAME)
 
     # 2. Попытка скачать с Google Drive
     print("📥 Скачиваю видео с Google Drive...")
     try:
-        output = gdown.download(PRIMARY_VIDEO_URL, VIDEO_FILENAME, quiet=False, fuzzy=True)
-        # Проверяем, что скачалось
+        output = gdown.download(VIDEO_URL, VIDEO_FILENAME, quiet=False, fuzzy=True)
         if os.path.exists(VIDEO_FILENAME) and os.path.getsize(VIDEO_FILENAME) > 10 * 1024 * 1024:
             print("✅ Видео успешно скачано!")
             return
@@ -43,31 +41,30 @@ def download_video_from_drive():
         print(f"⚠️ Ошибка Google Drive: {e}")
 
 def generate_gpt_story():
-    print("🧠 ChatGPT пишет длинную историю (5 глав) на АНГЛИЙСКОМ...")
+    print("🧠 ChatGPT пишет захватывающую историю (3 главы) на АНГЛИЙСКОМ...")
     
     if not OPENAI_KEY:
         print("⚠️ Нет ключа ChatGPT. Использую запасной текст.")
-        return "Chapter 1. The Beginning. Yesterday I joined an empty server..."
+        return "Chapter 1. The Glitch. I saw a Bacon Hair walking through walls..."
 
     client = OpenAI(api_key=OPENAI_KEY)
     
+    # ОБНОВЛЕННЫЙ ПРОМПТ (3 ГЛАВЫ + ИНТЕРЕС)
     prompt = (
-        "Write a captivating and scary story (creepypasta) about Roblox "
-        "with the main character being a Bacon Hair. "
-        "The story should feel like a scary fairy tale. "
-        "MANDATORY REQUIREMENT: The story must consist of exactly 5 chapters. "
-        "Format it as 'Chapter 1: ...', 'Chapter 2: ...' and so on. "
-        "The story must be long, sufficient for a 3-5 minute reading time. "
-        "Make the plot exciting with an unexpected ending in the 5th chapter. "
-        "Do not use hashtags or emojis. Only plain text. "
-        "Write the story entirely in English."
+        "Write a HIGHLY ENGAGING and SCARY story (creepypasta) about Roblox "
+        "featuring a Bacon Hair character. "
+        "MANDATORY REQUIREMENT: The story must consist of exactly 3 chapters. "
+        "Format: 'Chapter 1: ...', 'Chapter 2: ...', 'Chapter 3: ...'. "
+        "Total length should be enough for a 2-3 minute video. "
+        "Make it very interesting with a shocking plot twist at the end. "
+        "Do not use hashtags/emojis. Write in English."
     )
 
     try:
         completion = client.chat.completions.create(
             model="gpt-3.5-turbo-16k", 
             messages=[
-                {"role": "system", "content": "You are a professional horror story writer for YouTube."},
+                {"role": "system", "content": "You are a master of horror storytelling."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=2000 
@@ -77,15 +74,47 @@ def generate_gpt_story():
         return story
     except Exception as e:
         print(f"❌ Ошибка OpenAI: {e}")
-        return "Error generating story. The Bacon Hair stole the script."
+        return "Error generating story."
+
+def upload_to_gofile(file_path):
+    """Загрузка на Gofile.io (Самый надежный метод)"""
+    print("🚀 Ищу лучший сервер для загрузки на Gofile...")
+    try:
+        # 1. Получаем доступный сервер
+        server_response = requests.get("https://api.gofile.io/getServer")
+        if server_response.status_code != 200:
+            print("Ошибка получения сервера Gofile.")
+            return None
+        
+        server = server_response.json()['data']['server']
+        print(f"✅ Сервер найден: {server}")
+
+        # 2. Загружаем файл
+        print(f"📤 Загружаю файл на {server}...")
+        with open(file_path, 'rb') as f:
+            upload_response = requests.post(
+                f"https://{server}.gofile.io/uploadFile",
+                files={'file': f}
+            )
+            
+            if upload_response.status_code == 200:
+                data = upload_response.json()
+                if data['status'] == 'ok':
+                    return data['data']['downloadPage']
+                else:
+                    print(f"Ошибка Gofile: {data}")
+            else:
+                print(f"Ошибка сети Gofile: {upload_response.status_code}")
+    except Exception as e:
+        print(f"Ошибка загрузки: {e}")
+    return None
 
 def make_video():
-    """Основная логика создания видео"""
-    print(f"\n--- НАЧАЛО ЦИКЛА v6.5 (PIXELDRAIN LARGE FILE FIX) ---")
+    print(f"\n--- НАЧАЛО ЦИКЛА v6.8 (18H COOLDOWN) ---")
     
-    if not ELEVENLABS_KEY:
-        print("ОШИБКА: Нет ключа ElevenLabs")
-        return
+    # if not ELEVENLABS_KEY:
+    #     print("ОШИБКА: Нет ключа ElevenLabs")
+    #     return
 
     # 1. Скачиваем
     download_video_from_drive()
@@ -93,31 +122,35 @@ def make_video():
         print("❌ Не удалось найти видео.")
         return
 
-    # 2. Текст
+    # 2. Текст (Генерируем, чтобы проверить GPT, но озвучивать не будем)
     story_text = generate_gpt_story()
 
-    # 3. Озвучка
-    print("🎤 Озвучиваю большой текст...")
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
-    headers = {"xi-api-key": ELEVENLABS_KEY, "Content-Type": "application/json"}
-    data = {
-        "text": story_text,
-        "model_id": "eleven_multilingual_v2",
-        "voice_settings": {"stability": 0.5, "similarity_boost": 0.5}
-    }
+    # 3. Озвучка (ОТКЛЮЧЕНО)
+    print("🎤 Озвучиваю... (ОТКЛЮЧЕНО: ЭКОНОМИЯ ПОИНТОВ)")
+    # url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
+    # headers = {"xi-api-key": ELEVENLABS_KEY, "Content-Type": "application/json"}
+    # data = {
+    #     "text": story_text,
+    #     "model_id": "eleven_multilingual_v2",
+    #     "voice_settings": {"stability": 0.5, "similarity_boost": 0.5}
+    # }
 
-    try:
-        response = requests.post(url, json=data, headers=headers)
-        if response.status_code != 200:
-            print(f"Ошибка озвучки: {response.text}")
-            return
-            
-        with open("temp_audio.mp3", "wb") as f:
-            f.write(response.content)
-        print("✅ Аудио записано.")
-    except Exception as e:
-        print(f"Ошибка при запросе к ElevenLabs: {e}")
-        return
+    # try:
+    #     response = requests.post(url, json=data, headers=headers)
+    #     if response.status_code != 200:
+    #         print(f"Ошибка озвучки: {response.text}")
+    #         return
+    #     with open("temp_audio.mp3", "wb") as f:
+    #         f.write(response.content)
+    #     print("✅ Аудио записано.")
+    # except Exception as e:
+    #     print(f"Ошибка ElevenLabs: {e}")
+    #     return
+    
+    # --- ВРЕМЕННАЯ ЗАГЛУШКА (10 секунд тишины), чтобы код не ломался ---
+    print("⚠️ Создаю пустой аудиофайл для теста монтажа...")
+    os.system('ffmpeg -f lavfi -i anullsrc=r=44100:cl=stereo -t 10 -q:a 9 -acodec libmp3lame temp_audio.mp3 -y')
+    # ------------------------------------------------------------------
 
     # Ускорение
     print("⚡ Ускоряю голос...")
@@ -127,19 +160,16 @@ def make_video():
     print("🎬 Монтирую...")
     try:
         audio = AudioFileClip("temp_audio_fast.mp3") 
-        
-        # БЕЗОПАСНАЯ ЗАГРУЗКА ВИДЕО
         try:
             video = VideoFileClip(VIDEO_FILENAME)
-        except Exception as e:
-            print(f"❌ ОШИБКА ВИДЕОФАЙЛА: {e}")
-            print("⚠️ Файл битый! Удаляю его, чтобы в следующий раз скачать нормальный.")
+        except:
+            print("⚠️ Битое видео! Удаляю.")
             os.remove(VIDEO_FILENAME)
-            return # Прерываем этот круг, начнем заново
+            return
 
         # Проверка длины
         if video.duration < audio.duration:
-            print(f"🔄 Зацикливаю видео (Аудио: {audio.duration}с)...")
+            print("🔄 Зацикливаю видео...")
             loops = int(audio.duration / video.duration) + 1
             video = video.loop(n=loops) 
 
@@ -158,33 +188,21 @@ def make_video():
         final_clip = final_clip.resize(height=1920)
         
         final_clip = final_clip.set_audio(audio)
-        output_filename = "final_long_story.mp4"
+        output_filename = "final_story_3ch.mp4"
         
         final_clip.write_videofile(output_filename, codec="libx264", audio_codec="aac", fps=24, preset='ultrafast')
         
-        print("\n🎉 ВИДЕО ГОТОВО! Загружаю на PixelDrain (до 5ГБ)...")
+        print("\n🎉 ВИДЕО ГОТОВО! Загружаю на Gofile...")
 
-        # 5. Выгрузка (PixelDrain с отключенным SSL и User-Agent)
-        with open(output_filename, 'rb') as f:
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-            }
-            upload_response = requests.post(
-                "https://pixeldrain.com/api/file", 
-                files={"file": f},
-                auth=('', ''),
-                headers=headers,
-                verify=False # Игнорируем ошибки SSL, это критично для Railway
-            )
-            
-            if upload_response.status_code == 201: # 201 = Created
-                file_id = upload_response.json().get("id")
-                link = f"https://pixeldrain.com/u/{file_id}"
-                print("\n" + "="*40)
-                print(f"👉 ТВОЕ ДЛИННОЕ ВИДЕО ТУТ: {link}")
-                print("="*40 + "\n")
-            else:
-                print(f"Ошибка выгрузки: {upload_response.text}")
+        # 5. Выгрузка (Gofile)
+        link = upload_to_gofile(output_filename)
+        
+        if link:
+            print("\n" + "="*40)
+            print(f"👉 ТВОЕ ВИДЕО ТУТ: {link}")
+            print("="*40 + "\n")
+        else:
+            print("❌ Не удалось загрузить видео.")
 
     except Exception as e:
         print(f"Ошибка монтажа: {e}")
@@ -196,8 +214,9 @@ def run_bot_loop():
         except Exception as e:
             print(f"\n❌ ОБЩАЯ ОШИБКА: {e}")
         
-        print("✅ Сплю 1 час...")
-        time.sleep(3600)
+        # 18 часов = 18 * 60 * 60 = 64800 секунд
+        print("✅ Работа завершена. Сплю 18 часов перед следующим видео...")
+        time.sleep(64800)
 
 if __name__ == "__main__":
     run_bot_loop()
