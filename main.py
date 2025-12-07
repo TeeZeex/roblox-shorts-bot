@@ -79,14 +79,27 @@ def generate_gpt_story():
 def upload_to_gofile(file_path):
     """Загрузка на Gofile.io (Самый надежный метод)"""
     print("🚀 Ищу лучший сервер для загрузки на Gofile...")
+    
+    # Заголовки, чтобы притвориться браузером
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+
     try:
         # 1. Получаем доступный сервер
-        server_response = requests.get("https://api.gofile.io/getServer")
+        server_response = requests.get("https://api.gofile.io/getServer", headers=headers)
+        
         if server_response.status_code != 200:
-            print("Ошибка получения сервера Gofile.")
+            print(f"Ошибка получения сервера Gofile: Код {server_response.status_code}")
+            print(server_response.text)
             return None
         
-        server = server_response.json()['data']['server']
+        data = server_response.json()
+        if data['status'] != 'ok':
+            print(f"Ошибка API Gofile: {data}")
+            return None
+            
+        server = data['data']['server']
         print(f"✅ Сервер найден: {server}")
 
         # 2. Загружаем файл
@@ -94,7 +107,8 @@ def upload_to_gofile(file_path):
         with open(file_path, 'rb') as f:
             upload_response = requests.post(
                 f"https://{server}.gofile.io/uploadFile",
-                files={'file': f}
+                files={'file': f},
+                headers=headers
             )
             
             if upload_response.status_code == 200:
@@ -102,15 +116,15 @@ def upload_to_gofile(file_path):
                 if data['status'] == 'ok':
                     return data['data']['downloadPage']
                 else:
-                    print(f"Ошибка Gofile: {data}")
+                    print(f"Ошибка Gofile upload: {data}")
             else:
-                print(f"Ошибка сети Gofile: {upload_response.status_code}")
+                print(f"Ошибка сети Gofile upload: {upload_response.status_code}")
     except Exception as e:
         print(f"Ошибка загрузки: {e}")
     return None
 
 def make_video():
-    print(f"\n--- НАЧАЛО ЦИКЛА v6.8 (18H COOLDOWN) ---")
+    print(f"\n--- НАЧАЛО ЦИКЛА v6.9 (GOFILE HEADERS FIX) ---")
     
     # if not ELEVENLABS_KEY:
     #     print("ОШИБКА: Нет ключа ElevenLabs")
