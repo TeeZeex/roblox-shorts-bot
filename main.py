@@ -85,25 +85,8 @@ def robust_upload(file_path):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
 
-    # ВАРИАНТ 1: Catbox
-    print("👉 Попытка 1: Catbox.moe")
-    try:
-        with open(file_path, 'rb') as f:
-            response = requests.post(
-                "https://catbox.moe/user/api.php",
-                data={"reqtype": "fileupload"},
-                files={"fileToUpload": f},
-                headers=headers,
-                verify=False # Игнорируем ошибки SSL
-            )
-            if response.status_code == 200:
-                return response.text.strip()
-            print(f"⚠️ Ошибка Catbox: {response.text}")
-    except Exception as e:
-        print(f"⚠️ Сбой Catbox: {e}")
-
-    # ВАРИАНТ 2: PixelDrain
-    print("👉 Попытка 2: PixelDrain")
+    # ВАРИАНТ 1: PixelDrain (Теперь ПЕРВЫЙ, так как работает без VPN)
+    print("👉 Попытка 1: PixelDrain")
     try:
         with open(file_path, 'rb') as f:
             response = requests.post(
@@ -111,13 +94,30 @@ def robust_upload(file_path):
                 files={"file": f},
                 auth=('', ''),
                 headers=headers,
-                verify=False
+                verify=False # Игнорируем ошибки SSL (критично для Railway)
             )
             if response.status_code == 201:
                 return f"https://pixeldrain.com/u/{response.json().get('id')}"
             print(f"⚠️ Ошибка PixelDrain: {response.text}")
     except Exception as e:
         print(f"⚠️ Сбой PixelDrain: {e}")
+
+    # ВАРИАНТ 2: Catbox
+    print("👉 Попытка 2: Catbox.moe")
+    try:
+        with open(file_path, 'rb') as f:
+            response = requests.post(
+                "https://catbox.moe/user/api.php",
+                data={"reqtype": "fileupload"},
+                files={"fileToUpload": f},
+                headers=headers,
+                verify=False
+            )
+            if response.status_code == 200:
+                return response.text.strip()
+            print(f"⚠️ Ошибка Catbox: {response.text}")
+    except Exception as e:
+        print(f"⚠️ Сбой Catbox: {e}")
 
     # ВАРИАНТ 3: 0x0.st
     print("👉 Попытка 3: 0x0.st")
@@ -138,7 +138,7 @@ def robust_upload(file_path):
     return None
 
 def make_video():
-    print(f"\n--- НАЧАЛО ЦИКЛА v7.0 (ROBUST UPLOADER) ---")
+    print(f"\n--- НАЧАЛО ЦИКЛА v7.1 (PIXELDRAIN PRIORITY) ---")
     
     # 1. Скачиваем
     download_video_from_drive()
@@ -149,9 +149,8 @@ def make_video():
     # 2. Текст
     story_text = generate_gpt_story()
 
-    # 3. Озвучка (ПОКА ОТКЛЮЧЕНА для экономии)
+    # 3. Озвучка (ПОКА ОТКЛЮЧЕНА)
     print("🎤 Озвучиваю... (ОТКЛЮЧЕНО: ЭКОНОМИЯ ПОИНТОВ)")
-    # --- ЗАГЛУШКА АУДИО (10 сек тишины) ---
     print("⚠️ Создаю пустой аудиофайл для теста...")
     os.system('ffmpeg -f lavfi -i anullsrc=r=44100:cl=stereo -t 10 -q:a 9 -acodec libmp3lame temp_audio.mp3 -y')
     
